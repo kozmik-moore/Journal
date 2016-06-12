@@ -8,7 +8,7 @@ import pickle
 import collections
 import os
 
-MONTH_DICT={"Jan":"01","Feb":"02","Mar":"03","Apr":"04",'May':'05','June':'06',
+MONTH_DICT={"Jan":"01","Feb":"02","Mar":"03","Apr":"04",'May':'05','Jun':'06',
                        'Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12'}
 
 class JournalWidget():
@@ -48,19 +48,24 @@ class JournalWidget():
     def MakeDateFrame(self):
         #Date frame
         dateframe=Frame(self.mainwidget, height=1)
+        #datekey=self.UpdateKey()
+        self.datelabel=Combobox(dateframe, postcommand=self.UpdateKey)
+        self.datelabel.bind("<<ComboboxSelected>>", lambda e: self.UpdateDisplay(self.datelabel.get()))
+        MODIFY=Button(dateframe, text="Modify", command=self.ModifyDate)
+        self.datelabel.pack(side=LEFT)
+        MODIFY.pack(side=LEFT)
+        dateframe.pack(side=TOP)
+        
+    def UpdateKey(self):
         registry=self.GetEntries()
         datekey=()
+        datekey+=('',)
         binkey=sorted(registry, reverse=False)
         for i in binkey:
             date=self.ConvertDate("program", i)
             index=(date,)
             datekey+=index
-        datelabel=Combobox(dateframe, values=datekey)
-        datelabel.bind("<<ComboboxSelected>>", lambda e: self.UpdateDisplay(datelabel.get()))
-        MODIFY=Button(dateframe, text="Modify", command=self.ModifyDate)
-        datelabel.pack(side=LEFT)
-        MODIFY.pack(side=LEFT)
-        dateframe.pack(side=TOP)
+        self.datelabel['values']=datekey
 
     def MakeBodyFrame(self, text=None):
         #Body Frame
@@ -95,30 +100,54 @@ class JournalWidget():
         self.linkstext.pack(side=LEFT)
         linksframe.pack(side=TOP)
 
-    def UpdateDisplay(self, value):
-##        print("check2")
-##        if value!="":
-        date=self.ConvertDate("user", value)
-        registry=self.GetEntries()
+    def UpdateDisplay(self, value=None):
+        #This function will clear all fields except the date. 
+        #If passed a date, it will repopulate those fields with
+        #the appropriate data.
+        
         self.body.delete("1.0", END)
         self.tagstext.delete("1.0", END)
         self.linkstext.delete("1.0", END)
-        self.body.insert(CURRENT, registry[date][0])
-        self.tagstext.insert(CURRENT, registry[date][1])
-        self.linkstext.insert(CURRENT, registry[date][2])
+        self.linkstext.insert(INSERT, "None")
+        if value:
+            date=self.ConvertDate("user", value)
+            registry=self.GetEntries()
+            self.body.insert(CURRENT, registry[date][0])
+            self.tagstext.insert(CURRENT, registry[date][1])
+            self.linkstext.delete("1.0", END)
+            self.linkstext.insert(CURRENT, registry[date][2])
     
                        
     def ModifyDate(self):
         print("Yes!")
 
     def SaveEntry(self):
-        print("Excellent!")
+        registry=self.GetEntries()
+        date=self.GetDate()
+        body=self.body.get("1.0", END)
+        tags=self.tagstext.get("1.0", END)
+        links=self.linkstext.get('1.0', END)
+        
+        #Save to binary file
+        registry[self.ConvertDate('user', date)]=[body, tags, links]
+        binfile=open("C:/Users/Kozmik Moore/Dropbox/Journal/Registry.bin", "wb")
+        pickle.dump(registry, binfile)
+        binfile.close()
+        
+        #Save to text file
+        textfile=open("C:/Users/Kozmik Moore/Dropbox/Journal/Entries/"+date.replace(":", "")+".txt",
+                      'a')
+        textfile.write(body+"\n\nTags: "+tags+"\n\nLinks: "+links)
+        textfile.close()
 
     def NewEntry(self, date=None):
         if date==None:
-            print("Watch Out!")
+            self.UpdateDisplay()
+            self.datelabel.set('')
         else:
-            print("Here it comes!")
+            self.UpdateDisplay()
+            self.linkstext.delete("1.0", END)
+            self.linkstext.insert(INSERT, date.replace(':',''))
 
     def DestroyMainWindow(self, window):
         window.destroy()
@@ -130,6 +159,8 @@ class JournalWidget():
             window.mainloop()
 
     def GetEntries(self):
+        #Cluttered implementation: may want to rethink opening registry here
+        #only
         filelocation="C:/Users/Kozmik Moore/Dropbox/Journal/Registry.bin"
         errstring=""
         try:
@@ -137,6 +168,7 @@ class JournalWidget():
             try:
                 fildict={}
                 filedict=pickle.load(binfilein)
+                binfilein.close()
                 return filedict
             except EOFError:
                 errstring="Error. File is Empty"
@@ -146,6 +178,7 @@ class JournalWidget():
             self.ThrowError(errstring)
 
     def GetDate(self):
+        #Gets datetime in user-friendly format
         date=datetime.today()
         datestr=(datetime.strftime(date, "%d %b %Y, %H%M:%S"))
         return datestr        
@@ -167,6 +200,7 @@ class JournalWidget():
                 date+=value[13:17]
                 date+=value[18:]
         else:
+            #Value is in user-friendly format
             date+=MONTH_DICT[value[3:6]]
             date+=value[0:2]
             date+=value[7:11]
