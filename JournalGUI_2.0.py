@@ -33,13 +33,13 @@ class JournalWidget():
         optionsframe=Frame(self.mainwidget)
         optionstop=Frame(optionsframe)
         SAVE=Button(optionstop, text="Save", command=self.SaveEntry)
-        QUIT=Button(optionstop, text="Quit", command=lambda:self.DestroyMainWindow(self.mainwidget))
+        QUIT=Button(optionstop, text="Quit", command=lambda:self.DestroyWindow(self.mainwidget))
         SAVE.pack(side=LEFT)
         QUIT.pack(side=LEFT)
         optionstop.pack(side=TOP)
         optionsbottom=Frame(optionsframe)
         NEW=Button(optionsbottom, text="New Entry", command=self.NewEntry)
-        LINK=Button(optionsbottom, text="Create Link", command=lambda:self.NewEntry(self.GetDate()))
+        LINK=Button(optionsbottom, text="Create Link", command=lambda:self.NewEntry(self.datelabel.get()))
         NEW.pack(side=LEFT)
         LINK.pack(side=LEFT)
         optionsbottom.pack(side=TOP)
@@ -62,8 +62,7 @@ class JournalWidget():
         datekey+=('',)
         binkey=sorted(registry, reverse=False)
         for i in binkey:
-            date=self.ConvertDate("program", i)
-            index=(date,)
+            index=(self.ConvertDate("program", i),)
             datekey+=index
         self.datelabel['values']=datekey
 
@@ -123,7 +122,9 @@ class JournalWidget():
 
     def SaveEntry(self):
         registry=self.GetEntries()
-        date=self.GetDate()
+        date=self.datelabel.get()
+        if not date:
+            date=self.GetDate()
         body=self.body.get("1.0", END)
         tags=self.tagstext.get("1.0", END)
         links=self.linkstext.get('1.0', END)
@@ -141,15 +142,15 @@ class JournalWidget():
         textfile.close()
 
     def NewEntry(self, date=None):
-        if date==None:
-            self.UpdateDisplay()
-            self.datelabel.set('')
-        else:
+        self.UpdateDisplay()
+        self.datelabel.set('')
+        if date:
+            self.datelabel
             self.UpdateDisplay()
             self.linkstext.delete("1.0", END)
             self.linkstext.insert(INSERT, date.replace(':',''))
 
-    def DestroyMainWindow(self, window):
+    def DestroyWindow(self, window):
         window.destroy()
 
     def CreateWindow(self, window=None):
@@ -180,7 +181,7 @@ class JournalWidget():
     def GetDate(self):
         #Gets datetime in user-friendly format
         date=datetime.today()
-        datestr=(datetime.strftime(date, "%d %b %Y, %H%M:%S"))
+        datestr=(datetime.strftime(date, "%d %b %Y, %H:%M:%S"))
         return datestr        
 
     def ConvertDate(self, form, value):
@@ -191,7 +192,7 @@ class JournalWidget():
                 date+=value[2:4]+" "
                 date+=list(MONTH_DICT.keys())[list(MONTH_DICT.values()).index(value[0:2])]+" "
                 date+=value[4:8]+", "
-                date+=value[8:12]+":"
+                date+=value[8:10]+":"+value[10:12]+':'
                 date+=value[12:]
             except ValueError:              ##value is in user-friendly format
                 date+=MONTH_DICT[value[3:6]]
@@ -204,8 +205,8 @@ class JournalWidget():
             date+=MONTH_DICT[value[3:6]]
             date+=value[0:2]
             date+=value[7:11]
-            date+=value[13:17]
-            date+=value[18:]
+            date+=value[13:15]+value[16:18]
+            date+=value[19:]
         return date
             
 
